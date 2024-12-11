@@ -26,11 +26,11 @@ const shadowUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png
 const customIcon = new L.Icon({
   iconUrl: iconUrl,
   iconRetinaUrl: iconRetinaUrl,
-  iconSize: [25, 41], 
-  iconAnchor: [12, 41], 
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
   popupAnchor: [0, -41],
   shadowUrl: shadowUrl,
-  shadowSize: [41, 41], 
+  shadowSize: [41, 41],
   shadowAnchor: [12, 41],
 });
 
@@ -121,11 +121,6 @@ const Input: React.FC<InputProps> = (props) => {
 
   return (
     <Box>
-      <Typography variant="delta" style={{ marginBottom, display }}>
-        <PluginIcon style={{width: "3rem", height:"3rem"}}/>
-        {' '}{props.label} v {version}
-      </Typography>
-
       <Typography variant="omega" style={{ marginBottom, display }}>
         To set the location, enter the coordinates and click on 'Set Location', or search for an
         address and press 'Search', or navigate on the map and right-click
@@ -149,8 +144,8 @@ const Input: React.FC<InputProps> = (props) => {
       <Box style={{ display: 'flex', height: '300px', width: '100%', marginBottom }}>
         <Box style={{ width: '100% ' }}>
           <MapContainer
-            zoom={ mapProps.zoom}
-            center={ props.value?.lat && props.value?.lng ? [props.value?.lat, props.value?.lng ] :  mapProps.center as LatLngTuple}
+            zoom={mapProps.zoom}
+            center={props.value?.lat && props.value?.lng ? [props.value?.lat, props.value?.lng] : mapProps.center as LatLngTuple}
             ref={setMap}
             style={{ height: '300px', zIndex: 299 }}
           >

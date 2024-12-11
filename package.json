@@ -77,7 +77,6 @@
   "bugs": {
     "url": "https://github.com/red-made/strapi-geodata/issues"
   },
-  "homepage": "https://github.com/red-made/strapi-geodata",
   "author": "red-made <info@red-made.com>",
   "main": "index.js"
 }
