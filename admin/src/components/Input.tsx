@@ -4,6 +4,9 @@ import L from 'leaflet';
 import type { LatLngTuple, LeafletMouseEvent } from 'leaflet';
 import PluginIcon from './../components/PluginIcon';
 import { version } from './../../../package.json';
+import { useQueryParams } from '@strapi/strapi/admin';
+import { buildValidParams, unstable_useContentManagerContext as useContentManagerContext,
+  unstable_useDocument as useDocument, useDocumentRBAC } from '@strapi/content-manager/strapi-admin';
 
 import {
   Box,
@@ -47,12 +50,20 @@ interface InputProps {
 const mapProps = {
   zoom: 7,
   center: [41.9, 12.5] as LatLngTuple,
-  tileUrl: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-  tileAttribution: 'OSM attribution',
+  tileUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  tileAttribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   tileAccessToken: '',
 };
 
 const Input: React.FC<InputProps> = (props) => {
+  const { model, form, id, collectionType } = useContentManagerContext() as any;
+  const [{ query }] = useQueryParams();
+  const params = buildValidParams(query);
+  const { document } = useDocument({ model, collectionType, documentId: id, params });
+  const formKey = `${model}:${id || 'new'}:${params?.locale || ''}:${params?.status || 'draft'}`;
+  const activeForm = useRef<string | null>(formKey);
+  activeForm.current = formKey;
+  const { canCreateFields, canUpdateFields, canUserAction } = useDocumentRBAC('GeodataInput', state => state);
   const [map, setMap] = useState<any>(null);
   const [location, setLocation] = useState<any>(props.value);
 
@@ -60,11 +71,45 @@ const Input: React.FC<InputProps> = (props) => {
   const lngRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    activeForm.current = formKey;
+    return () => { activeForm.current = null; };
+  }, [formKey]);
+
+  useEffect(() => {
+    const next = props.value;
+    if (next?.lat === location?.lat && next?.lng === location?.lng) return;
+    setLocation(next);
+    if (map && next && Number.isFinite(next.lat) && Number.isFinite(next.lng)) map.panTo(next);
+  }, [props.value?.lat, props.value?.lng, map]);
+
+  // Only direct Geodata actions supply manual provenance. Native form resets/copies do not.
+  const setManualLocation = useCallback((next: Location) => {
+    const managed = model === 'api::entity.entity' && props.name === 'coordinates';
+    if (managed && (activeForm.current !== formKey || props.disabled || form?.disabled)) return false;
+    setLocation(next);
+    if (!managed || !Number.isFinite(next.lat) || !Number.isFinite(next.lng)) return true;
+    const fields = document?.documentId ? canUpdateFields : canCreateFields;
+    const change = (name: string, value: any, type: 'json' | 'component' | 'string') => {
+      if (canUserAction(name, fields, type)) form.onChange({ target: { name, value, type } });
+    };
+    change('coordinateMetadata', {
+      raw: { coordinates: { lat: next.lat, lng: next.lng }, crs: 'WGS84' },
+      wgs84Coordinates: { lat: next.lat, lng: next.lng },
+      source: { provider: 'unknown', url: null }, _intent: 'set',
+    }, 'json');
+    const url = `https://www.google.com/maps/search/?api=1&query=${next.lat},${next.lng}`;
+    change('mapUrls', [{ url }], 'component');
+    change('googleMapURL', url, 'string');
+    return true;
+  }, [model, formKey, props.name, props.disabled, form?.disabled, document?.documentId,
+    form?.onChange, canCreateFields, canUpdateFields, canUserAction]);
+
   const onMapClick = useCallback(
     (e: LeafletMouseEvent) => {
-      setLocation(e.latlng);
+      setManualLocation(e.latlng);
     },
-    [map]
+    [setManualLocation]
   );
 
   useEffect(() => {
@@ -94,8 +139,7 @@ const Input: React.FC<InputProps> = (props) => {
     if (data.length > 0) {
       let lat = parseFloat(data[0].lat);
       let lng = parseFloat(data[0].lon);
-      setLocation({ lat, lng });
-      map.panTo({ lat, lng });
+      if (setManualLocation({ lat, lng })) map.panTo({ lat, lng });
     }
   }
 
@@ -105,8 +149,7 @@ const Input: React.FC<InputProps> = (props) => {
     if (lat && lng) {
       lat = parseFloat(lat);
       lng = parseFloat(lng);
-      setLocation({ lat, lng });
-      map.panTo({ lat, lng });
+      if (setManualLocation({ lat, lng })) map.panTo({ lat, lng });
     }
   }
 
@@ -153,6 +196,8 @@ const Input: React.FC<InputProps> = (props) => {
               attribution={mapProps.tileAttribution}
               url={mapProps.tileUrl}
               accessToken={mapProps.tileAccessToken}
+              referrerPolicy="strict-origin"
+              crossOrigin="anonymous"
             />
             {location && <Marker position={[location?.lat, location?.lng]} icon={customIcon} />}
           </MapContainer>

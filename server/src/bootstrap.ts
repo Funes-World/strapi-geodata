@@ -8,7 +8,7 @@ const bootstrap = ({ strapi }: { strapi: Core.Strapi }) => {
       // do something
       for (const key in event.model.attributes) {
         let field: any = event.model.attributes[key];
-        if (field?.customField === 'plugin::geodata.geojson') {
+        if (field?.customField === 'plugin::geodata.geojson' && Object.prototype.hasOwnProperty.call(event.params.data, key)) {
           event.params.data.lat = event.params.data[key]?.lat;
           event.params.data.lng = event.params.data[key]?.lng;
           if (event.params.data.lat && event.params.data.lng) {
