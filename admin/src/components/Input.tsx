@@ -57,7 +57,7 @@ const mapProps = {
 
 const Input: React.FC<InputProps> = (props) => {
   const { model, form, id, collectionType } = useContentManagerContext() as any;
-  const [{ query }] = useQueryParams();
+  const [{ query }] = useQueryParams<Parameters<typeof buildValidParams>[0]>();
   const params = buildValidParams(query);
   const { document } = useDocument({ model, collectionType, documentId: id, params });
   const formKey = `${model}:${id || 'new'}:${params?.locale || ''}:${params?.status || 'draft'}`;
